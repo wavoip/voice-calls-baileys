@@ -1,8 +1,9 @@
 {
   "name": "voice-calls-baileys",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Integração de chamadas de voz a biblioteca baileys",
-  "main": "index.js",
+  "main": "lib/index.js",
+	"types": "lib/index.d.ts",
   "scripts": {
     "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/index.ts",
     "build": "tsc"
