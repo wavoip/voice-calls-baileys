@@ -73,7 +73,7 @@ export const useVoiceCallsBaileys = async ( wavoip_token: string, baileys_sock: 
     try {
       const response = await baileys_sock.createParticipantNodes(jids, message, extraAttrs);
 
-      callback(response);
+      callback(response, true);
 
       logger?.debug("[*] Success on call createParticipantNodes function", response);
     } catch (error) {

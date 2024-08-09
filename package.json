@@ -1,10 +1,11 @@
 {
   "name": "voice-calls-baileys",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Integração de chamadas de voz a biblioteca baileys",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/index.ts"
+    "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/index.ts",
+    "build": "tsc"
   },
   "author": "Wavoip",
   "license": "ISC",
