@@ -8,7 +8,9 @@ import { Logger } from "pino";
 
 let baileys_connection_state: WAConnectionState = "close";
 
-export const useVoiceCallsBaileys = async ( wavoip_token: string, baileys_sock: WASocket, logger?: Logger) => {
+export const useVoiceCallsBaileys = async ( wavoip_token: string, baileys_sock: WASocket, status?: WAConnectionState, logger?: Logger) => {
+  baileys_connection_state = status ?? "close";
+
   const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io("https://devices.wavoip.com/baileys", {
     transports: ['websocket'],
     path: `/${wavoip_token}/websocket`,
