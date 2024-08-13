@@ -15,7 +15,7 @@ async function connectToWhatsApp() {
     markOnlineOnConnect: false
   })
 
-  useVoiceCallsBaileys("your token", sock, "close", P({ level: "debug" }))
+  useVoiceCallsBaileys("your token", sock, "close", true)
 
   sock.ev.on("creds.update", saveCreds);
 
