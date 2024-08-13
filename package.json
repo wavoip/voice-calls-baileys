@@ -1,6 +1,6 @@
 {
   "name": "voice-calls-baileys",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Integração de chamadas de voz a biblioteca baileys",
   "main": "lib/index.js",
 	"types": "lib/index.d.ts",
