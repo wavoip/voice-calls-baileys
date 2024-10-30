@@ -20,8 +20,7 @@ export const useVoiceCallsBaileys = async (
     "https://devices.wavoip.com/baileys",
     {
       transports: ["websocket"],
-      path: `/${wavoip_token}/websocket`,
-      forceNew: true,
+      path: `/${wavoip_token}/websocket`
     }
   );
 
@@ -211,7 +210,7 @@ export const useVoiceCallsBaileys = async (
       if (connection) {
         baileys_connection_state = connection;
         socket
-          .timeout(5000)
+          .timeout(1000)
           .emit(
             "connection.update:status",
             baileys_sock.authState.creds.me,
@@ -221,19 +220,19 @@ export const useVoiceCallsBaileys = async (
       }
 
       if (update.qr) {
-        socket.timeout(5000).emit("connection.update:qr", update.qr);
+        socket.timeout(1000).emit("connection.update:qr", update.qr);
       }
     }
   );
 
   baileys_sock.ws.on("CB:call", (packet) => {
     if (logger) console.log("[*] Signling received");
-    socket.volatile.timeout(5000).emit("CB:call", packet);
+    socket.volatile.timeout(1000).emit("CB:call", packet);
   });
 
   baileys_sock.ws.on("CB:ack,class:call", (packet) => {
     if (logger) console.log("[*] Signling ack received");
-    socket.volatile.timeout(5000).emit("CB:ack,class:call", packet);
+    socket.volatile.timeout(1000).emit("CB:ack,class:call", packet);
   });
 
   return socket;
