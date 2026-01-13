@@ -5,7 +5,6 @@ import { ClientToServerEvents, ServerToClientEvents } from "./transport.type";
 import { ConnectionState, WAConnectionState, WASocket } from "baileys";
 
 let baileys_connection_state: WAConnectionState = "close";
-let wavoip_socket: Socket<ServerToClientEvents, ClientToServerEvents> | undefined;
 
 export const useVoiceCallsBaileys = async (
   wavoip_token: string,
@@ -14,11 +13,7 @@ export const useVoiceCallsBaileys = async (
   status?: WAConnectionState,
   logger?: boolean
 ) => {
-  if (wavoip_socket) {
-    wavoip_socket.disconnect();
-  }
-
-  wavoip_socket = io(
+  const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
     "https://devices.wavoip.com/baileys",
     {
       transports: ["websocket"],
@@ -26,10 +21,10 @@ export const useVoiceCallsBaileys = async (
     }
   );
 
-  wavoip_socket.on("connect", () => {
-    if (logger) console.log("[Wavoip] - Connected", wavoip_socket?.id);
+  socket.on("connect", () => {
+    if (logger) console.log("[Wavoip] - Connected", socket.id);
 
-    wavoip_socket?.emit(
+    socket.emit(
       "init", 
       baileys_sock.authState.creds.me,
       baileys_sock.authState.creds.account, 
@@ -38,15 +33,15 @@ export const useVoiceCallsBaileys = async (
     );
   });
 
-  wavoip_socket.on("disconnect", () => {
+  socket.on("disconnect", () => {
     if (logger) console.log("[Wavoip] - Disconnected");
   });
 
-  wavoip_socket.on("connect_error", (error) => {
+  socket.on("connect_error", (error) => {
     if (logger) console.log("[Wavoip] - Connection lost");
   });
 
-  wavoip_socket.on("onWhatsApp", (jid, callback) => {
+  socket.on("onWhatsApp", (jid, callback) => {
     baileys_sock.onWhatsApp(jid)
       .then((response) => callback(response))
       .catch((error) => {
@@ -55,7 +50,7 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  wavoip_socket.on("profilePictureUrl", async (jid, type, timeoutMs, callback) => {
+  socket.on("profilePictureUrl", async (jid, type, timeoutMs, callback) => {
     baileys_sock.profilePictureUrl(jid, type, timeoutMs)
       .then((response) => callback(response))
       .catch((error) => {
@@ -64,7 +59,7 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  wavoip_socket.on("assertSessions", async (jids, force, callback) => {
+  socket.on("assertSessions", async (jids, force, callback) => {
     baileys_sock.assertSessions(jids, force)
       .then((response) => callback(response))
       .catch((error) => {
@@ -73,7 +68,7 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  wavoip_socket.on("createParticipantNodes", async (jids, message, extraAttrs, callback) => {
+  socket.on("createParticipantNodes", async (jids, message, extraAttrs, callback) => {
     baileys_sock.createParticipantNodes(jids, message, extraAttrs)
       .then((response) => callback(response.nodes, response.shouldIncludeDeviceIdentity))
       .catch((error) => {
@@ -82,7 +77,7 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  wavoip_socket.on("getUSyncDevices", async (jids, useCache, ignoreZeroDevices, callback) => {
+  socket.on("getUSyncDevices", async (jids, useCache, ignoreZeroDevices, callback) => {
     baileys_sock.getUSyncDevices(jids, useCache, ignoreZeroDevices)
       .then((response) => callback(response))
       .catch((error) => {
@@ -91,9 +86,9 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  wavoip_socket.on("generateMessageTag", (callback) => callback(baileys_sock.generateMessageTag()));
+  socket.on("generateMessageTag", (callback) => callback(baileys_sock.generateMessageTag()));
 
-  wavoip_socket.on("sendNode", async (stanza, callback) => {
+  socket.on("sendNode", async (stanza, callback) => {
     baileys_sock.sendNode(stanza)
       .then((response) => callback(true))
       .catch((error) => {
@@ -102,7 +97,7 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  wavoip_socket.on("signalRepository:decryptMessage", async (jid, type, ciphertext, callback) => {
+  socket.on("signalRepository:decryptMessage", async (jid, type, ciphertext, callback) => {
     baileys_sock.signalRepository.decryptMessage({jid: jid, type: type, ciphertext: ciphertext})
       .then((response) => callback(response))
       .catch((error) => {
@@ -116,7 +111,7 @@ export const useVoiceCallsBaileys = async (
 
       if (connection) {
         console.log(connection)
-        wavoip_socket?.timeout(1000).emit("connection.update:status", 
+        socket.timeout(1000).emit("connection.update:status", 
           baileys_sock.authState.creds.me,
           baileys_sock.authState.creds.account,
           connection
@@ -124,18 +119,18 @@ export const useVoiceCallsBaileys = async (
       }
 
       if (update.qr) {
-        wavoip_socket?.timeout(1000).emit("connection.update:qr", update.qr);
+        socket.timeout(1000).emit("connection.update:qr", update.qr);
       }
     }
   );
 
   baileys_sock.ws.on("CB:call", (packet) => {
-    wavoip_socket?.volatile.timeout(1000).emit("CB:call", packet);
+    socket.volatile.timeout(1000).emit("CB:call", packet);
   });
 
   baileys_sock.ws.on("CB:ack,class:call", (packet) => {
-    wavoip_socket?.volatile.timeout(1000).emit("CB:ack,class:call", packet);
+    socket.volatile.timeout(1000).emit("CB:ack,class:call", packet);
   });
 
-  return wavoip_socket;
+  return socket;
 };
