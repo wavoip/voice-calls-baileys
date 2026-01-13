@@ -9,13 +9,14 @@ async function connectToWhatsApp() {
   const sock = makeWASocket({
     printQRInTerminal: true,
     auth: state,
-    browser: Browsers.macOS('Desktop'),
+    browser: Browsers.windows("UWP"),
+    version: [2, 3000, 1031141796, 257538, 0],
     logger: P({ level: "error" }),
     syncFullHistory: false,
     markOnlineOnConnect: false
   })
 
-  useVoiceCallsBaileys("your token", sock, "close", true)
+  useVoiceCallsBaileys("<Your Wavoip Token>", sock, "<Your Software Name>", "close", true)
 
   sock.ev.on("creds.update", saveCreds);
 
