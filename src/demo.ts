@@ -10,7 +10,8 @@ async function connectToWhatsApp() {
     printQRInTerminal: true,
     auth: state,
     browser: Browsers.windows("UWP"),
-    version: [2, 3000, 1031141796, 257538, 0],
+    //@ts-expect-error
+    version: [2, 3000, 1039498983, 261700, 0],
     logger: P({ level: "error" }),
     syncFullHistory: false,
     markOnlineOnConnect: false

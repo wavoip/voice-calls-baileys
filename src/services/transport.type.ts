@@ -13,11 +13,13 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  "init": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState, softwareBase: string) => void;
+  "init": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState, softwareBase: string, isCoex: boolean, devicesConnected: number) => void;
   "CB:call": (packet: any) => void;
   "CB:ack,class:call": (packet: any) => void;
-  "connection.update:status": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState) => void;
+  "connection.update:status": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState, isCoex: boolean, devicesConnected: number) => void;
   "connection.update:qr": (qr: string) => void;
+  "call:terminate": () => void;
+  "call:reject": () => void;
 }
 
 export type FailedResponseType = {wavoipStatus: string, result: any};
