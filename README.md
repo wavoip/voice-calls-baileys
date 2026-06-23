@@ -20,10 +20,24 @@ npm install voice-calls-baileys baileys@7.0.0-rc13
 
 ### Baileys patch
 
+> [!WARNING]
+> **The Baileys patch is mandatory.** Without it, calls won't get voice through. Always
+> confirm the patch was applied (see below) before reporting audio issues.
+
 Voice calls require a patched `validate-connection.js` so Baileys advertises a desktop/UWP
 client. The patch lives in `patches/validate-connection.js` and is applied automatically on
 `postinstall`. It is version-guarded: if the installed Baileys is not `7.0.0-rc13` it is skipped
-with a warning instead of corrupting your install.
+with a warning instead of corrupting your install — meaning calls won't get voice through until
+you pin Baileys to `7.0.0-rc13` and re-apply the patch.
+
+Confirm it was applied — `postinstall` prints:
+
+```
+[voice-calls-baileys] Patched baileys@7.0.0-rc13 (lib\Utils\validate-connection.js).
+```
+
+If you see a skip warning instead, calls won't get voice through until you fix the Baileys
+version and run `npm run patch-baileys`.
 
 Re-apply manually at any time (e.g. after reinstalling Baileys):
 
