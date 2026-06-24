@@ -25,10 +25,12 @@ export interface ClientToServerEvents {
 export type FailedResponseType = {wavoipStatus: string, result: any};
 
 export type onWhatsAppType = (jid: string, callback: onWhatsAppCallback) => void;
-export type onWhatsAppCallback = (response: {
-  exists: boolean;
+export type OnWhatsAppContact = {
+  id: string;
   jid: string;
-}[] | FailedResponseType | undefined) => void;
+  lid: string | null;
+};
+export type onWhatsAppCallback = (response: OnWhatsAppContact[] | FailedResponseType | undefined) => void;
 
 export type ProfilePictureUrlType = (jid: string, type: "image" | "preview", timeoutMs: number | undefined, callback: ProfilePictureUrlCallback) => void;
 export type ProfilePictureUrlCallback = (response: string | FailedResponseType | undefined) => void;

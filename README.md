@@ -67,8 +67,7 @@ useVoiceCallsBaileys(
   "<Your Wavoip Token>",
   sock,
   "<Your Software Name>",
-  "close", // initial connection status
-  true,    // enable logging
+  true, // enable logging
 );
 ```
 

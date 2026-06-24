@@ -17,7 +17,7 @@ async function connectToWhatsApp() {
     markOnlineOnConnect: false
   })
 
-  useVoiceCallsBaileys("<Your Wavoip Token>", sock, "<Your Software Name>", "close", true)
+  useVoiceCallsBaileys("<Your Wavoip Token>", sock, "Wavoip", true)
 
   sock.ev.on("creds.update", saveCreds);
 

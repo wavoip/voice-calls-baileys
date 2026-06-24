@@ -2,16 +2,21 @@ import { io, Socket } from "socket.io-client";
 
 import { ClientToServerEvents, ServerToClientEvents } from "./transport.type";
 
-import { ConnectionState, WAConnectionState, WASocket } from "baileys";
+import { ConnectionState, USyncQuery, USyncUser, WAConnectionState, WASocket } from "baileys";
 
 export const useVoiceCallsBaileys = async (
   wavoip_token: string,
   baileys_sock: WASocket,
   softwareBase: string,
-  status?: WAConnectionState,
   logger?: boolean
 ) => {
-  let baileys_connection_state: WAConnectionState = status ?? "close";
+  const deriveConnectionState = (): WAConnectionState => {
+    if (baileys_sock.ws.isOpen) return "open";
+    if (baileys_sock.ws.isConnecting) return "connecting";
+    return "close";
+  };
+
+  let baileys_connection_state: WAConnectionState = deriveConnectionState();
   let device_info = { isCoex: false, devicesConnected: -1 };
 
   const extractNumber = (jid: string) => jid.split("@")[0].split(":")[0];
@@ -46,6 +51,8 @@ export const useVoiceCallsBaileys = async (
   socket.on("connect", async () => {
     if (logger) console.log("[Wavoip] - Connected", socket.id);
 
+    baileys_connection_state = deriveConnectionState();
+
     if (baileys_connection_state === "open") await refreshDeviceInfo();
 
     socket.emit(
@@ -67,13 +74,22 @@ export const useVoiceCallsBaileys = async (
     if (logger) console.log("[Wavoip] - Connection lost");
   });
 
-  socket.on("onWhatsApp", (jid, callback) => {
-    baileys_sock.onWhatsApp(jid)
-      .then((response) => callback(response))
-      .catch((error) => {
-        callback({wavoipStatus: "error", result: error});
-        if (logger) console.log("[Wavoip] - Failed to call onWhatsapp, error: ", error)
-      });
+  socket.on("onWhatsApp", async (jid, callback) => {
+    try {
+      const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol();
+      const phone = `+${jid.replace("+", "").split("@")[0].split(":")[0]}`;
+      usyncQuery.withUser(new USyncUser().withPhone(phone));
+
+      const results = await baileys_sock.executeUSyncQuery(usyncQuery);
+      const contacts = (results?.list ?? [])
+        .filter((entry) => !!entry.contact)
+        .map((entry) => ({ id: entry.id, jid: entry.id, lid: (entry.lid as string | null) ?? null }));
+
+      callback(contacts);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call onWhatsapp, error: ", error)
+    }
   });
 
   socket.on("profilePictureUrl", async (jid, type, timeoutMs, callback) => {
