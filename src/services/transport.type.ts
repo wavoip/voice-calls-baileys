@@ -1,4 +1,4 @@
-import { WAConnectionState, JidWithDevice, Contact, BinaryNode, proto } from "baileys";
+import { WAConnectionState, JidWithDevice, Contact, BinaryNode, proto, ReachoutTimelockState } from "baileys";
 
 export interface ServerToClientEvents {
   withAck: (d: string, callback: (e: number) => void) => void;
@@ -10,6 +10,10 @@ export interface ServerToClientEvents {
   generateMessageTag: GenerateMessageTagType;
   sendNode: SendNodeType;
   "signalRepository:decryptMessage": SignalRepositoryDecryptMessageType;
+  getTcToken: GetTcTokenType;
+  getTimelockInfo: GetTimelockInfoType;
+  logout: LogoutType;
+  requestPairingCode: RequestPairingCodeType;
 }
 
 export interface ClientToServerEvents {
@@ -55,3 +59,15 @@ export type SendNodeTypeCallback = (response: boolean | FailedResponseType) => v
 
 export type SignalRepositoryDecryptMessageType = (jid: string, type: "pkmsg" | "msg", ciphertext: Buffer, callback: SignalRepositoryDecryptMessageCallback) => void
 export type SignalRepositoryDecryptMessageCallback = (response: Uint8Array | FailedResponseType) => void;
+
+export type GetTcTokenType = (jid: string, callback: GetTcTokenCallback) => void
+export type GetTcTokenCallback = (response: Buffer | null | FailedResponseType) => void;
+
+export type GetTimelockInfoType = (callback: GetTimelockInfoCallback) => void
+export type GetTimelockInfoCallback = (response: ReachoutTimelockState | FailedResponseType) => void;
+
+export type LogoutType = (callback: LogoutCallback) => void
+export type LogoutCallback = (response: boolean | FailedResponseType) => void;
+
+export type RequestPairingCodeType = (phone: string, callback: RequestPairingCodeCallback) => void
+export type RequestPairingCodeCallback = (response: string | FailedResponseType) => void;

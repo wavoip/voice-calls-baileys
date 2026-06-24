@@ -12,6 +12,7 @@ import {
   WAConnectionState,
   WASocket
 } from "baileys";
+import { isTcTokenExpired } from "baileys/lib/Utils/tc-token-utils";
 
 export const useVoiceCallsBaileys = async (
   wavoip_token: string,
@@ -166,6 +167,55 @@ export const useVoiceCallsBaileys = async (
       .catch((error) => {
         callback({wavoipStatus: "error", result: error});
         if (logger) console.log("[Wavoip] - Failed to call decryptMessage, error: ", error)
+      });
+  });
+
+  socket.on("getTcToken", async (jid, callback) => {
+    try {
+      const tctokenData = await baileys_sock.authState.keys.get("tctoken", [jid]);
+      const entry = tctokenData[jid];
+      let token: Buffer | undefined = entry?.token;
+
+      if (token?.length && isTcTokenExpired(entry?.timestamp)) {
+        token = undefined;
+        try {
+          await baileys_sock.authState.keys.set({ tctoken: { [jid]: null } });
+        } catch {}
+      }
+
+      callback(token ?? null);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call getTcToken, error: ", error)
+    }
+  });
+
+  socket.on("getTimelockInfo", async (callback) => {
+    try {
+      if (!baileys_sock.authState.creds.me?.id) return callback({});
+      const state = await baileys_sock.fetchAccountReachoutTimelock();
+      callback(state);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call getTimelockInfo, error: ", error)
+    }
+  });
+
+  socket.on("logout", async (callback) => {
+    baileys_sock.logout()
+      .then(() => callback(true))
+      .catch((error) => {
+        callback({wavoipStatus: "error", result: error});
+        if (logger) console.log("[Wavoip] - Failed to call logout, error: ", error)
+      });
+  });
+
+  socket.on("requestPairingCode", async (phone, callback) => {
+    baileys_sock.requestPairingCode(phone)
+      .then((code) => callback(code))
+      .catch((error) => {
+        callback({wavoipStatus: "error", result: error});
+        if (logger) console.log("[Wavoip] - Failed to call requestPairingCode, error: ", error)
       });
   });
 
