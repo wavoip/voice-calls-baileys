@@ -2,7 +2,16 @@ import { io, Socket } from "socket.io-client";
 
 import { ClientToServerEvents, ServerToClientEvents } from "./transport.type";
 
-import { ConnectionState, USyncQuery, USyncUser, WAConnectionState, WASocket } from "baileys";
+import {
+  ConnectionState,
+  getBinaryNodeChild,
+  jidNormalizedUser,
+  S_WHATSAPP_NET,
+  USyncQuery,
+  USyncUser,
+  WAConnectionState,
+  WASocket
+} from "baileys";
 
 export const useVoiceCallsBaileys = async (
   wavoip_token: string,
@@ -93,12 +102,24 @@ export const useVoiceCallsBaileys = async (
   });
 
   socket.on("profilePictureUrl", async (jid, type, timeoutMs, callback) => {
-    baileys_sock.profilePictureUrl(jid, type, timeoutMs)
-      .then((response) => callback(response))
-      .catch((error) => {
-        callback({wavoipStatus: "error", result: error});
-        if (logger) console.log("[Wavoip] - Failed to call profilePictureUrl, error: ", error)
-      });
+    try {
+      const result = await baileys_sock.query({
+        tag: "iq",
+        attrs: {
+          target: jidNormalizedUser(jid),
+          to: S_WHATSAPP_NET,
+          type: "get",
+          xmlns: "w:profile:picture"
+        },
+        content: [{ tag: "picture", attrs: { type, query: "url" } }]
+      }, timeoutMs);
+
+      const picture = getBinaryNodeChild(result, "picture");
+      callback(picture?.attrs?.url);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call profilePictureUrl, error: ", error)
+    }
   });
 
   socket.on("assertSessions", async (jids, force, callback) => {
