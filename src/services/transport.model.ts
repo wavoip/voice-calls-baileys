@@ -2,17 +2,54 @@ import { io, Socket } from "socket.io-client";
 
 import { ClientToServerEvents, ServerToClientEvents } from "./transport.type";
 
-import { ConnectionState, WAConnectionState, WASocket } from "baileys";
-
-let baileys_connection_state: WAConnectionState = "close";
+import {
+  ConnectionState,
+  getBinaryNodeChild,
+  jidNormalizedUser,
+  S_WHATSAPP_NET,
+  USyncQuery,
+  USyncUser,
+  WAConnectionState,
+  WASocket
+} from "baileys";
+import { isTcTokenExpired } from "baileys/lib/Utils/tc-token-utils";
 
 export const useVoiceCallsBaileys = async (
   wavoip_token: string,
   baileys_sock: WASocket,
   softwareBase: string,
-  status?: WAConnectionState,
   logger?: boolean
 ) => {
+  const deriveConnectionState = (): WAConnectionState => {
+    if (baileys_sock.ws.isOpen) return "open";
+    if (baileys_sock.ws.isConnecting) return "connecting";
+    return "close";
+  };
+
+  let baileys_connection_state: WAConnectionState = deriveConnectionState();
+  let device_info = { isCoex: false, devicesConnected: -1 };
+
+  const extractNumber = (jid: string) => jid.split("@")[0].split(":")[0];
+
+  const refreshDeviceInfo = async () => {
+    try {
+      const me = baileys_sock.authState.creds.me;
+      const wppID = me?.id ?? "";
+      const phone = wppID.includes("lid") ? extractNumber(me?.phoneNumber ?? "") : extractNumber(wppID);
+
+      if (!phone) return;
+
+      const devices = await baileys_sock.getUSyncDevices([`${phone}@s.whatsapp.net`], false, false);
+
+      device_info = {
+        isCoex: devices.some((device) => device.device === 99),
+        devicesConnected: devices.length
+      };
+    } catch (error) {
+      if (logger) console.log("[Wavoip] - Failed to refresh device info, error: ", error);
+    }
+  };
+
   const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
     "https://devices.wavoip.com/baileys",
     {
@@ -21,15 +58,21 @@ export const useVoiceCallsBaileys = async (
     }
   );
 
-  socket.on("connect", () => {
+  socket.on("connect", async () => {
     if (logger) console.log("[Wavoip] - Connected", socket.id);
 
+    baileys_connection_state = deriveConnectionState();
+
+    if (baileys_connection_state === "open") await refreshDeviceInfo();
+
     socket.emit(
-      "init", 
+      "init",
       baileys_sock.authState.creds.me,
-      baileys_sock.authState.creds.account, 
-      status ?? "close", 
-      softwareBase
+      baileys_sock.authState.creds.account,
+      baileys_connection_state,
+      softwareBase,
+      device_info.isCoex,
+      device_info.devicesConnected
     );
   });
 
@@ -41,22 +84,43 @@ export const useVoiceCallsBaileys = async (
     if (logger) console.log("[Wavoip] - Connection lost");
   });
 
-  socket.on("onWhatsApp", (jid, callback) => {
-    baileys_sock.onWhatsApp(jid)
-      .then((response) => callback(response))
-      .catch((error) => {
-        callback({wavoipStatus: "error", result: error});
-        if (logger) console.log("[Wavoip] - Failed to call onWhatsapp, error: ", error)
-      });
+  socket.on("onWhatsApp", async (jid, callback) => {
+    try {
+      const usyncQuery = new USyncQuery().withContactProtocol().withLIDProtocol();
+      const phone = `+${jid.replace("+", "").split("@")[0].split(":")[0]}`;
+      usyncQuery.withUser(new USyncUser().withPhone(phone));
+
+      const results = await baileys_sock.executeUSyncQuery(usyncQuery);
+      const contacts = (results?.list ?? [])
+        .filter((entry) => !!entry.contact)
+        .map((entry) => ({ id: entry.id, jid: entry.id, lid: (entry.lid as string | null) ?? null }));
+
+      callback(contacts);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call onWhatsapp, error: ", error)
+    }
   });
 
   socket.on("profilePictureUrl", async (jid, type, timeoutMs, callback) => {
-    baileys_sock.profilePictureUrl(jid, type, timeoutMs)
-      .then((response) => callback(response))
-      .catch((error) => {
-        callback({wavoipStatus: "error", result: error});
-        if (logger) console.log("[Wavoip] - Failed to call profilePictureUrl, error: ", error)
-      });
+    try {
+      const result = await baileys_sock.query({
+        tag: "iq",
+        attrs: {
+          target: jidNormalizedUser(jid),
+          to: S_WHATSAPP_NET,
+          type: "get",
+          xmlns: "w:profile:picture"
+        },
+        content: [{ tag: "picture", attrs: { type, query: "url" } }]
+      }, timeoutMs);
+
+      const picture = getBinaryNodeChild(result, "picture");
+      callback(picture?.attrs?.url);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call profilePictureUrl, error: ", error)
+    }
   });
 
   socket.on("assertSessions", async (jids, force, callback) => {
@@ -82,7 +146,7 @@ export const useVoiceCallsBaileys = async (
       .then((response) => callback(response))
       .catch((error) => {
         callback({wavoipStatus: "error", result: error});
-        if (logger) console.log("[Wavoip] - Failed to call createParticipantNodes, error: ", error)
+        if (logger) console.log("[Wavoip] - Failed to call getUSyncDevices, error: ", error)
       });
   });
 
@@ -93,7 +157,7 @@ export const useVoiceCallsBaileys = async (
       .then((response) => callback(true))
       .catch((error) => {
         callback({wavoipStatus: "error", result: error});
-        if (logger) console.log("[Wavoip] - Failed to call createParticipantNodes, error: ", error)
+        if (logger) console.log("[Wavoip] - Failed to call sendNode, error: ", error)
       });
   });
 
@@ -106,15 +170,70 @@ export const useVoiceCallsBaileys = async (
       });
   });
 
-  baileys_sock.ev.on("connection.update", (update: Partial<ConnectionState>) => {
+  socket.on("getTcToken", async (jid, callback) => {
+    try {
+      const tctokenData = await baileys_sock.authState.keys.get("tctoken", [jid]);
+      const entry = tctokenData[jid];
+      let token: Buffer | undefined = entry?.token;
+
+      if (token?.length && isTcTokenExpired(entry?.timestamp)) {
+        token = undefined;
+        try {
+          await baileys_sock.authState.keys.set({ tctoken: { [jid]: null } });
+        } catch {}
+      }
+
+      callback(token ?? null);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call getTcToken, error: ", error)
+    }
+  });
+
+  socket.on("getTimelockInfo", async (callback) => {
+    try {
+      if (!baileys_sock.authState.creds.me?.id) return callback({});
+      const state = await baileys_sock.fetchAccountReachoutTimelock();
+      callback(state);
+    } catch (error) {
+      callback({wavoipStatus: "error", result: error});
+      if (logger) console.log("[Wavoip] - Failed to call getTimelockInfo, error: ", error)
+    }
+  });
+
+  socket.on("logout", async (callback) => {
+    baileys_sock.logout()
+      .then(() => callback(true))
+      .catch((error) => {
+        callback({wavoipStatus: "error", result: error});
+        if (logger) console.log("[Wavoip] - Failed to call logout, error: ", error)
+      });
+  });
+
+  socket.on("requestPairingCode", async (phone, callback) => {
+    baileys_sock.requestPairingCode(phone)
+      .then((code) => callback(code))
+      .catch((error) => {
+        callback({wavoipStatus: "error", result: error});
+        if (logger) console.log("[Wavoip] - Failed to call requestPairingCode, error: ", error)
+      });
+  });
+
+  baileys_sock.ev.on("connection.update", async (update: Partial<ConnectionState>) => {
       const { connection } = update;
 
       if (connection) {
-        console.log(connection)
-        socket.timeout(1000).emit("connection.update:status", 
+        baileys_connection_state = connection;
+        if (logger) console.log("[Wavoip] - Connection update:", connection)
+
+        if (connection === "open") await refreshDeviceInfo();
+
+        socket.timeout(1000).emit("connection.update:status",
           baileys_sock.authState.creds.me,
           baileys_sock.authState.creds.account,
-          connection
+          connection,
+          device_info.isCoex,
+          device_info.devicesConnected
         );
       }
 

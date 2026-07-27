@@ -4,9 +4,17 @@
   "description": "Integração de chamadas de voz a biblioteca baileys",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "patches",
+    "scripts"
+  ],
   "scripts": {
     "dev": "ts-node-dev --inspect --transpile-only --ignore-watch node_modules src/demo.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "tsc",
+    "patch-baileys": "node scripts/apply-baileys-patch.js",
+    "postinstall": "node scripts/apply-baileys-patch.js"
   },
   "author": "Wavoip",
   "license": "ISC",
@@ -17,7 +25,7 @@
   },
   "dependencies": {
     "@types/socket.io-client": "^3.0.0",
-    "baileys": "^6.7.8",
+    "baileys": "^7.0.0-rc13",
     "qrcode-terminal": "^0.12.0",
     "socket.io-client": "^4.7.5",
     "ts-node-dev": "^2.0.0"

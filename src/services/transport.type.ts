@@ -1,4 +1,4 @@
-import { WAConnectionState, JidWithDevice, Contact, BinaryNode, proto } from "baileys";
+import { WAConnectionState, JidWithDevice, Contact, BinaryNode, proto, ReachoutTimelockState } from "baileys";
 
 export interface ServerToClientEvents {
   withAck: (d: string, callback: (e: number) => void) => void;
@@ -10,23 +10,31 @@ export interface ServerToClientEvents {
   generateMessageTag: GenerateMessageTagType;
   sendNode: SendNodeType;
   "signalRepository:decryptMessage": SignalRepositoryDecryptMessageType;
+  getTcToken: GetTcTokenType;
+  getTimelockInfo: GetTimelockInfoType;
+  logout: LogoutType;
+  requestPairingCode: RequestPairingCodeType;
 }
 
 export interface ClientToServerEvents {
-  "init": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState, softwareBase: string) => void;
+  "init": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState, softwareBase: string, isCoex: boolean, devicesConnected: number) => void;
   "CB:call": (packet: any) => void;
   "CB:ack,class:call": (packet: any) => void;
-  "connection.update:status": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState) => void;
+  "connection.update:status": (me: Contact | undefined, account: proto.IADVSignedDeviceIdentity | undefined, status: WAConnectionState, isCoex: boolean, devicesConnected: number) => void;
   "connection.update:qr": (qr: string) => void;
+  "call:terminate": () => void;
+  "call:reject": () => void;
 }
 
 export type FailedResponseType = {wavoipStatus: string, result: any};
 
 export type onWhatsAppType = (jid: string, callback: onWhatsAppCallback) => void;
-export type onWhatsAppCallback = (response: {
-  exists: boolean;
+export type OnWhatsAppContact = {
+  id: string;
   jid: string;
-}[] | FailedResponseType | undefined) => void;
+  lid: string | null;
+};
+export type onWhatsAppCallback = (response: OnWhatsAppContact[] | FailedResponseType | undefined) => void;
 
 export type ProfilePictureUrlType = (jid: string, type: "image" | "preview", timeoutMs: number | undefined, callback: ProfilePictureUrlCallback) => void;
 export type ProfilePictureUrlCallback = (response: string | FailedResponseType | undefined) => void;
@@ -51,3 +59,15 @@ export type SendNodeTypeCallback = (response: boolean | FailedResponseType) => v
 
 export type SignalRepositoryDecryptMessageType = (jid: string, type: "pkmsg" | "msg", ciphertext: Buffer, callback: SignalRepositoryDecryptMessageCallback) => void
 export type SignalRepositoryDecryptMessageCallback = (response: Uint8Array | FailedResponseType) => void;
+
+export type GetTcTokenType = (jid: string, callback: GetTcTokenCallback) => void
+export type GetTcTokenCallback = (response: Buffer | null | FailedResponseType) => void;
+
+export type GetTimelockInfoType = (callback: GetTimelockInfoCallback) => void
+export type GetTimelockInfoCallback = (response: ReachoutTimelockState | FailedResponseType) => void;
+
+export type LogoutType = (callback: LogoutCallback) => void
+export type LogoutCallback = (response: boolean | FailedResponseType) => void;
+
+export type RequestPairingCodeType = (phone: string, callback: RequestPairingCodeCallback) => void
+export type RequestPairingCodeCallback = (response: string | FailedResponseType) => void;

@@ -10,13 +10,14 @@ async function connectToWhatsApp() {
     printQRInTerminal: true,
     auth: state,
     browser: Browsers.windows("UWP"),
-    version: [2, 3000, 1031141796, 257538, 0],
+    //@ts-expect-error
+    version: [2, 3000, 1043623007, 262303, 0],
     logger: P({ level: "error" }),
     syncFullHistory: false,
     markOnlineOnConnect: false
   })
 
-  useVoiceCallsBaileys("<Your Wavoip Token>", sock, "<Your Software Name>", "close", true)
+  useVoiceCallsBaileys("<Your Wavoip Token>", sock, "Wavoip", true)
 
   sock.ev.on("creds.update", saveCreds);
 
