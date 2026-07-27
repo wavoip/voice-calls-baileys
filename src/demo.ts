@@ -11,7 +11,7 @@ async function connectToWhatsApp() {
     auth: state,
     browser: Browsers.windows("UWP"),
     //@ts-expect-error
-    version: [2, 3000, 1039498983, 261700, 0],
+    version: [2, 3000, 1043623007, 262303, 0],
     logger: P({ level: "error" }),
     syncFullHistory: false,
     markOnlineOnConnect: false
